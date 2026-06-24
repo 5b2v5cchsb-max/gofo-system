@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GOFO Payroll System</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f4f8; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.card { background: white; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); padding: 48px 56px; max-width: 560px; width: 100%; text-align: center; }
+.logo { font-size: 48px; margin-bottom: 8px; }
+h1 { font-size: 26px; color: #1F3864; margin-bottom: 6px; }
+.sub { color: #666; font-size: 15px; margin-bottom: 36px; }
+.drop-zone { border: 2px dashed #4472C4; border-radius: 12px; padding: 40px 24px; cursor: pointer; transition: all 0.2s; background: #f7f9ff; margin-bottom: 24px; }
+.drop-zone:hover, .drop-zone.dragover { background: #e8f0fe; border-color: #1F3864; }
+.drop-zone input[type=file] { display: none; }
+.drop-icon { font-size: 40px; margin-bottom: 12px; }
+.drop-text { color: #4472C4; font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+.drop-sub { color: #888; font-size: 13px; }
+.file-list { text-align: left; margin-bottom: 20px; min-height: 0; }
+.file-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f0f7ff; border-radius: 8px; margin-bottom: 6px; font-size: 14px; color: #1F3864; }
+.file-item span { font-size: 18px; }
+.btn { background: #1F3864; color: white; border: none; border-radius: 10px; padding: 14px 40px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; transition: background 0.2s; }
+.btn:hover { background: #2F5496; }
+.btn:disabled { background: #ccc; cursor: not-allowed; }
+.steps { display: flex; justify-content: center; gap: 24px; margin-top: 36px; }
+.step { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.step-num { width: 32px; height: 32px; border-radius: 50%; background: #4472C4; color: white; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+.step-label { font-size: 11px; color: #888; text-align: center; max-width: 72px; }
+.step-line { width: 40px; height: 2px; background: #ddd; margin-top: 15px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🚚</div>
+  <h1>GOFO Payroll System</h1>
+  <p class="sub">Sube los archivos Excel de GOFO y genera el reporte en segundos</p>
+
+  <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" name="files" multiple accept=".xlsx">
+      <div class="drop-icon">📂</div>
+      <div class="drop-text">Arrastra los archivos aquí</div>
+      <div class="drop-sub">o haz clic para seleccionar · Puedes subir varios a la vez</div>
+    </div>
+    <div class="file-list" id="fileList"></div>
+    <button type="submit" class="btn" id="submitBtn" disabled>Procesar archivos →</button>
+  </form>
+
+  <div style="text-align:center;margin-bottom:20px"><a href="/finances" style="color:#4472C4;font-size:14px;font-weight:bold;">💰 Ver Finanzas y Budget →</a> · <a href="/bank" style="color:#4472C4;font-size:14px;font-weight:bold;">🏦 Analizar Bank Statement →</a></div><div class="steps">
+    <div class="step"><div class="step-num" style="background:#4472C4">1</div><div class="step-label">Subir Excels</div></div>
+    <div class="step-line"></div>
+    <div class="step"><div class="step-num" style="background:#ccc">2</div><div class="step-label">Ajustes manuales</div></div>
+    <div class="step-line"></div>
+    <div class="step"><div class="step-num" style="background:#ccc">3</div><div class="step-label">Revisar reporte</div></div>
+    <div class="step-line"></div>
+    <div class="step"><div class="step-num" style="background:#ccc">4</div><div class="step-label">Descargar Excel</div></div>
+  </div>
+</div>
+
+<script>
+const dz = document.getElementById('dropZone');
+const fi = document.getElementById('fileInput');
+const fl = document.getElementById('fileList');
+const sb = document.getElementById('submitBtn');
+
+fi.addEventListener('change', showFiles);
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('dragover');
+  fi.files = e.dataTransfer.files; showFiles();
+});
+
+function showFiles() {
+  fl.innerHTML = '';
+  const files = Array.from(fi.files);
+  files.forEach(f => {
+    const city = f.name.split('-')[0];
+    fl.innerHTML += `<div class="file-item"><span>📄</span><b>${city}</b> — ${f.name}</div>`;
+  });
+  sb.disabled = files.length === 0;
+}
+</script>
+</body>
+</html>

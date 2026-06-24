@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajustes Manuales — GOFO</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f4f8; padding: 24px; }
+.top-bar { background: #1F3864; color: white; border-radius: 12px; padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.top-bar h1 { font-size: 20px; }
+.top-bar .period { font-size: 13px; opacity: 0.8; }
+.city-block { background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); margin-bottom: 24px; overflow: hidden; }
+.city-header { padding: 14px 24px; color: white; font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 10px; }
+.city-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.city-table th { background: #f0f4f8; padding: 10px 12px; text-align: center; color: #444; font-weight: bold; border-bottom: 1px solid #e0e0e0; }
+.city-table th.left { text-align: left; }
+.city-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+.city-table tr:last-child td { border-bottom: none; }
+.city-table tr:hover td { background: #fafbff; }
+.driver-name { font-weight: bold; color: #1F3864; }
+.route-badge { display: inline-block; background: #e8f0fe; color: #2F5496; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: bold; margin: 1px; }
+.base-pay { color: #1F3864; font-weight: bold; }
+.input-adj { width: 90px; border: 1px solid #ddd; border-radius: 6px; padding: 5px 8px; text-align: right; font-size: 13px; }
+.input-adj:focus { outline: none; border-color: #4472C4; }
+.input-adj.bono { border-color: #92d050; }
+.input-adj.cobro { border-color: #ff4444; }
+.input-tarifa { width: 70px; border: 1px solid #ddd; border-radius: 6px; padding: 5px 8px; text-align: center; font-size: 12px; }
+.input-nota { width: 160px; border: 1px solid #ddd; border-radius: 6px; padding: 5px 8px; font-size: 12px; }
+.total-cell { font-weight: bold; color: #1F3864; }
+.pen-cell { color: #cc0000; }
+.footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
+.btn { border: none; border-radius: 10px; padding: 13px 36px; font-size: 15px; font-weight: bold; cursor: pointer; }
+.btn-primary { background: #1F3864; color: white; }
+.btn-primary:hover { background: #2F5496; }
+.btn-secondary { background: #eee; color: #444; }
+.legend { display: flex; gap: 20px; font-size: 12px; color: #666; margin-bottom: 16px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+.col-hint { font-size: 10px; color: #999; font-weight: normal; display: block; }
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <div>
+    <h1>🚚 Paso 2 — Ajustes Manuales por Driver</h1>
+    <div class="period">Período: {{ period }} · Modifica bonos, cobros o tarifas antes de generar el reporte</div>
+  </div>
+  <a href="/" style="color:white;font-size:13px;">← Volver a inicio</a>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#e8f0fe"></div> Pago base calculado automáticamente</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#e8ffe8"></div> Bono fijo o extra (suma al pago)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ffe8e8"></div> Cobro extra (resta al pago)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fff3cd"></div> Tarifa ajustable esta semana</div>
+</div>
+
+<form action="/adjustments" method="POST">
+{% for city_code, drivers in all_drivers.items() %}
+{% set colors = {'ORD':'#7030A0','SDF':'#0070C0','MEM':'#FF9900','BTR':'#C00000','SHV':'#00B050'} %}
+{% set cc = colors.get(city_code, '#4472C4') %}
+<div class="city-block">
+  <div class="city-header" style="background:{{ cc }}">
+    🏙️ {{ city_code }} — {{ drivers[0].city_name if drivers else '' }}
+    <span style="font-weight:normal;font-size:13px;opacity:0.85">· {{ drivers|length }} drivers</span>
+  </div>
+  <table class="city-table">
+    <thead>
+      <tr>
+        <th class="left">Driver</th>
+        <th>Rutas<span class="col-hint">tarifas editables</span></th>
+        <th>Pago Base<span class="col-hint">stops + extras</span></th>
+        <th>Bono Fijo</th>
+        <th>Penalizaciones</th>
+        <th style="background:#e8ffe8">Bono Extra<span class="col-hint">agregar pago</span></th>
+        <th style="background:#ffe8e8">Cobro Extra<span class="col-hint">descontar</span></th>
+        <th>Nota</th>
+        <th>Total Estimado</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for drv in drivers %}
+    {% set key = city_code ~ '__' ~ drv.driver %}
+    <tr>
+      <td class="driver-name">{{ drv.driver }}</td>
+      <td>
+        {% for rd in drv.rutas_data %}
+        <div style="margin-bottom:3px">
+          <span class="route-badge">{{ rd.ruta.split('-')[-1] }}</span>
+          <input type="number" class="input-tarifa" style="background:#fff3cd"
+            name="tarifa__{{ key }}__{{ rd.ruta }}"
+            value="{{ rd.tarifa_stop }}" step="0.01" min="0"
+            title="Tarifa $/stop para {{ rd.ruta }}">
+          <span style="font-size:11px;color:#888">× {{ rd.stops }}s + {{ rd.extras }}e</span>
+        </div>
+        {% endfor %}
+      </td>
+      <td class="base-pay" style="text-align:right">${{ "%.2f"|format(drv.pago_base) }}</td>
+      <td style="text-align:right;color:{% if drv.bono_fijo > 0 %}#1a7f1a{% else %}#888{% endif %}">
+        ${{ "%.2f"|format(drv.bono_fijo) }}
+      </td>
+      <td class="pen-cell" style="text-align:right">
+        {% if drv.penalizaciones < 0 %}${{ "%.2f"|format(drv.penalizaciones) }}{% else %}—{% endif %}
+      </td>
+      <td style="text-align:center">
+        <input type="number" class="input-adj bono" name="bono__{{ key }}"
+          value="0" step="0.01" min="0" placeholder="0.00">
+      </td>
+      <td style="text-align:center">
+        <input type="number" class="input-adj cobro" name="cobro__{{ key }}"
+          value="0" step="0.01" min="0" placeholder="0.00">
+      </td>
+      <td>
+        <input type="text" class="input-nota" name="nota__{{ key }}" placeholder="ej: incentivo ruta">
+      </td>
+      <td class="total-cell" style="text-align:right" id="total_{{ key|replace(' ','_') }}">
+        ${{ "%.2f"|format(drv.pago_base + drv.bono_fijo + drv.penalizaciones) }}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+
+<div class="footer">
+  <a href="/"><button type="button" class="btn btn-secondary">← Cancelar</button></a>
+  <button type="submit" class="btn btn-primary">Ver reporte previo →</button>
+</div>
+</form>
+
+<script>
+// Live update of estimated total as user types
+document.querySelectorAll('.input-adj, .input-tarifa').forEach(inp => {
+  inp.addEventListener('input', updateRow);
+});
+
+function updateRow(e) {
+  const row = e.target.closest('tr');
+  if (!row) return;
+  const key = e.target.name.split('__').slice(1).join('__').replace(/ /g,'_');
+
+  // Recalculate pago_base from tarifa inputs
+  let pagoBase = 0;
+  row.querySelectorAll('.input-tarifa').forEach(t => {
+    const stops  = parseInt(t.title.match(/× (\d+)s/)  ? t.closest('div').querySelector('span:last-child').textContent.match(/(\d+)s/)[1] : 0);
+    const extras = parseInt(t.closest('div').querySelector('span:last-child').textContent.match(/(\d+)e/)[1] || 0);
+    pagoBase += parseFloat(t.value || 0) * stops;
+    // extras use original rate — simplified for live preview
+  });
+
+  const bono  = parseFloat(row.querySelector('.input-adj.bono')?.value  || 0);
+  const cobro = parseFloat(row.querySelector('.input-adj.cobro')?.value || 0);
+
+  // Get bono fijo and penalizaciones from display
+  const bonoFijo = parseFloat(row.cells[3].textContent.replace(/[$,]/g,'')) || 0;
+  const pen = parseFloat(row.cells[4].textContent.replace(/[$,—]/g,'')) || 0;
+
+  const total = pagoBase + bonoFijo + bono - cobro - Math.abs(pen);
+  const cell = row.querySelector('.total-cell');
+  if (cell) cell.textContent = '$' + total.toFixed(2);
+}
+</script>
+</body>
+</html>

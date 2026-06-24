@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bank Statement — GOFO System</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f4f8; padding: 24px; }
+.top-bar { background: #1F3864; color: white; border-radius: 12px; padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.top-bar h1 { font-size: 20px; }
+.nav-links a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; margin-left: 16px; }
+.upload-card { background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 32px; max-width: 520px; margin: 0 auto 28px; text-align: center; }
+.upload-card h2 { font-size: 18px; color: #1F3864; margin-bottom: 8px; }
+.upload-card p { color: #666; font-size: 13px; margin-bottom: 20px; }
+.drop-zone { border: 2px dashed #4472C4; border-radius: 10px; padding: 28px 20px; cursor: pointer; background: #f7f9ff; margin-bottom: 16px; }
+.drop-zone:hover { background: #e8f0fe; }
+.drop-zone input { display: none; }
+.drop-icon { font-size: 36px; margin-bottom: 8px; }
+.drop-text { color: #4472C4; font-weight: bold; font-size: 15px; }
+.drop-sub { color: #888; font-size: 12px; margin-top: 4px; }
+.btn { background: #1F3864; color: white; border: none; border-radius: 8px; padding: 12px 32px; font-size: 14px; font-weight: bold; cursor: pointer; width: 100%; }
+.btn:hover { background: #2F5496; }
+.kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin-bottom: 24px; }
+.kpi { background: white; border-radius: 10px; padding: 16px 18px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
+.kpi-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+.kpi-value { font-size: 22px; font-weight: bold; }
+.kpi-value.green { color: #1a7f1a; }
+.kpi-value.red { color: #cc0000; }
+.kpi-sub { font-size: 11px; color: #999; margin-top: 3px; }
+.week-card { background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); margin-bottom: 16px; overflow: hidden; }
+.week-header { padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
+.week-header:hover { background: #fafbff; }
+.week-title { font-size: 15px; font-weight: bold; color: #1F3864; }
+.week-stats { display: flex; gap: 20px; font-size: 13px; }
+.w-ing { color: #1a7f1a; }
+.w-gas { color: #cc0000; }
+.w-net { font-weight: bold; }
+.w-net.pos { color: #1a7f1a; }
+.w-net.neg { color: #cc0000; }
+.week-body { padding: 16px 20px; display: none; }
+.week-body.open { display: block; }
+.cat-list { font-size: 13px; }
+.cat-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f5f5f5; }
+.cat-item:last-child { border-bottom: none; }
+.cat-name { color: #333; }
+.cat-amt-ing { color: #1a7f1a; font-weight: bold; }
+.cat-amt-gas { color: #cc0000; }
+.cat-section-title { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.4px; margin: 10px 0 6px; }
+.txn-list { font-size: 11px; margin-top: 10px; border-top: 1px solid #eee; padding-top: 8px; display: none; }
+.txn-list.open { display: block; }
+.txn-row { display: flex; gap: 8px; padding: 4px 0; border-bottom: 1px solid #f8f8f8; color: #555; }
+.txn-date { width: 40px; flex-shrink: 0; color: #999; }
+.txn-desc { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.txn-amt { width: 80px; text-align: right; flex-shrink: 0; }
+.toggle-txn { font-size: 11px; color: #4472C4; cursor: pointer; margin-top: 6px; display: inline-block; }
+.bar-wrap { background: #eee; border-radius: 4px; height: 6px; flex: 1; overflow: hidden; margin: 0 10px; }
+.bar-fill { height: 6px; border-radius: 4px; }
+.error-box { background: #fce4d6; border-left: 4px solid #cc0000; padding: 12px 16px; border-radius: 8px; color: #cc0000; font-size: 14px; margin-bottom: 20px; }
+.selected-file { font-size: 13px; color: #1F3864; font-weight: bold; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div>
+    <h1>🏦 Bank Statement — Wells Fargo</h1>
+    <div style="font-size:13px;opacity:0.8">Sube tu CSV semanal para ver en qué gastaste</div>
+  </div>
+  <div class="nav-links">
+    <a href="/">← Inicio</a>
+    <a href="/finances">💰 Finanzas</a>
+    <a href="/preview">📊 Reporte GOFO</a>
+  </div>
+</div>
+
+{% if error %}
+<div class="error-box">⚠️ {{ error }}</div>
+{% endif %}
+
+<div class="upload-card">
+  <h2>📂 Subir estado de cuenta</h2>
+  <p>Descarga el CSV de Wells Fargo y súbelo aquí cada semana.<br>El sistema categoriza todo automáticamente.</p>
+  <form action="/bank" method="POST" enctype="multipart/form-data" id="bankForm">
+    <div class="drop-zone" onclick="document.getElementById('csvInput').click()">
+      <input type="file" id="csvInput" name="csv_file" accept=".csv" onchange="showFile(this)">
+      <div class="drop-icon">📄</div>
+      <div class="drop-text">Arrastra el CSV aquí o haz clic</div>
+      <div class="drop-sub">Archivo .csv de Wells Fargo Checking</div>
+    </div>
+    <div class="selected-file" id="file-name" style="display:none"></div>
+    <button type="submit" class="btn">Analizar estado de cuenta →</button>
+  </form>
+</div>
+
+{% if analysis %}
+<!-- KPIs -->
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-label">Ingresos totales</div>
+    <div class="kpi-value green">${{ "{:,.0f}".format(analysis.total_ingresos) }}</div>
+    <div class="kpi-sub">{{ analysis.date_range }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Gastos totales</div>
+    <div class="kpi-value red">${{ "{:,.0f}".format(analysis.total_gastos) }}</div>
+    <div class="kpi-sub">{{ analysis.num_weeks }} semanas</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Neto del período</div>
+    <div class="kpi-value {{ 'green' if analysis.neto_total >= 0 else 'red' }}">${{ "{:,.0f}".format(analysis.neto_total) }}</div>
+    <div class="kpi-sub">Ingresos − Gastos</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Promedio GOFO/semana</div>
+    <div class="kpi-value green">${{ "{:,.0f}".format(analysis.avg_gofo_weekly) }}</div>
+    <div class="kpi-sub">Basado en historial</div>
+  </div>
+</div>
+
+<!-- Semanas -->
+<div style="font-size:14px;font-weight:bold;color:#1F3864;margin-bottom:12px">
+  Detalle por semana — haz clic para expandir
+</div>
+
+{% for week in analysis.weeks %}
+{% set is_first = loop.first %}
+<div class="week-card">
+  <div class="week-header" onclick="toggleWeek({{ loop.index }})">
+    <div class="week-title">
+      Sem {{ week.week_label }}
+      {% if is_first %}<span style="font-size:11px;background:#e8f0fe;color:#2F5496;padding:2px 8px;border-radius:6px;margin-left:8px;font-weight:normal">Más reciente</span>{% endif %}
+    </div>
+    <div class="week-stats">
+      <span class="w-ing">+${{ "{:,.2f}".format(week.ingresos) }}</span>
+      <span class="w-gas">-${{ "{:,.2f}".format(week.gastos) }}</span>
+      <span class="w-net {{ 'pos' if week.neto >= 0 else 'neg' }}">${{ "{:,.2f}".format(week.neto) }}</span>
+    </div>
+  </div>
+  <div class="week-body {{ 'open' if is_first else '' }}" id="week-{{ loop.index }}">
+    {% set ingresos_cats = week.categories.items() | selectattr('1.type', 'equalto', 'ingreso') | list %}
+    {% set gastos_cats   = week.categories.items() | selectattr('1.type', 'equalto', 'gasto')   | list %}
+
+    {% if ingresos_cats %}
+    <div class="cat-section-title">Ingresos</div>
+    <div class="cat-list">
+      {% for cat, data in ingresos_cats | sort(attribute='1.amount', reverse=True) %}
+      <div class="cat-item">
+        <span class="cat-name">{{ cat }}</span>
+        <span class="cat-amt-ing">+${{ "{:,.2f}".format(data.amount) }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if gastos_cats %}
+    <div class="cat-section-title" style="margin-top:12px">Gastos</div>
+    <div class="cat-list">
+      {% set max_gasto = gastos_cats | map(attribute='1.amount') | map('abs') | max %}
+      {% for cat, data in gastos_cats | sort(attribute='1.amount') %}
+      <div class="cat-item">
+        <span class="cat-name">{{ cat }}</span>
+        <div class="bar-wrap"><div class="bar-fill" style="width:{{ [(data.amount | abs / max_gasto * 100), 2] | max }}%;background:{% if data.amount | abs > 10000 %}#E24B4A{% elif data.amount | abs > 1000 %}#BA7517{% else %}#888780{% endif %}"></div></div>
+        <span class="cat-amt-gas">-${{ "{:,.2f}".format(data.amount | abs) }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <span class="toggle-txn" onclick="toggleTxn({{ loop.index }})">Ver todas las transacciones ▼</span>
+    <div class="txn-list" id="txn-{{ loop.index }}">
+      {% for txn in week.transactions | sort(attribute='DATE') %}
+      <div class="txn-row">
+        <span class="txn-date">{{ txn.DATE[:5] if txn.DATE is string else txn.DATE.strftime('%m/%d') }}</span>
+        <span class="txn-desc" title="{{ txn.DESCRIPTION }}">{{ txn.DESCRIPTION[:55] }}</span>
+        <span class="txn-amt" style="color:{{ '#1a7f1a' if txn.AMOUNT > 0 else '#cc0000' }}">${{ "{:,.2f}".format(txn.AMOUNT | abs) }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<script>
+function showFile(input) {
+  const name = input.files[0]?.name;
+  if (name) {
+    document.getElementById('file-name').textContent = '📄 ' + name;
+    document.getElementById('file-name').style.display = 'block';
+  }
+}
+function toggleWeek(i) {
+  const el = document.getElementById('week-' + i);
+  el.classList.toggle('open');
+}
+function toggleTxn(i) {
+  const el = document.getElementById('txn-' + i);
+  const btn = el.previousElementSibling;
+  el.classList.toggle('open');
+  btn.textContent = el.classList.contains('open') ? 'Ocultar transacciones ▲' : 'Ver todas las transacciones ▼';
+}
+</script>
+</body>
+</html>

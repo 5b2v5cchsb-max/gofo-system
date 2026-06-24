@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporte Final — GOFO</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f4f8; padding: 24px; }
+.top-bar { background: #1F3864; color: white; border-radius: 12px; padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.top-bar h1 { font-size: 20px; }
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+.kpi { background: white; border-radius: 12px; padding: 20px 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.07); }
+.kpi-label { font-size: 12px; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.kpi-value { font-size: 28px; font-weight: bold; color: #1F3864; }
+.kpi-value.green { color: #1a7f1a; }
+.kpi-value.red { color: #cc0000; }
+.city-block { background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); margin-bottom: 20px; overflow: hidden; }
+.city-header { padding: 14px 24px; color: white; display: flex; justify-content: space-between; align-items: center; }
+.city-header h2 { font-size: 16px; }
+.city-kpis { display: flex; gap: 28px; font-size: 13px; opacity: 0.9; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #f0f4f8; padding: 10px 12px; text-align: right; color: #444; font-weight: bold; border-bottom: 1px solid #e0e0e0; }
+th.left { text-align: left; }
+td { padding: 9px 12px; border-bottom: 1px solid #f0f0f0; text-align: right; vertical-align: middle; }
+td.left { text-align: left; font-weight: bold; color: #1F3864; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafbff; }
+.green-cell { background: #e2efda; font-weight: bold; }
+.red-cell { background: #fce4d6; }
+.yellow-cell { background: #fff2cc; }
+.pen-val { color: #cc0000; }
+.adj-val { color: #1a7f1a; font-weight: bold; }
+.footer { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; gap: 12px; }
+.btn { border: none; border-radius: 10px; padding: 14px 36px; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; }
+.btn-primary { background: #1a7f1a; color: white; }
+.btn-primary:hover { background: #15651a; }
+.btn-secondary { background: #eee; color: #444; }
+.badge { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: bold; }
+.badge-adj { background: #fff2cc; color: #856404; }
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <div>
+    <h1>📊 Paso 3 — Vista Previa del Reporte</h1>
+    <div style="font-size:13px;opacity:0.8">Período: {{ period }} · Revisa los números antes de descargar</div>
+  </div>
+  <a href="/adjustments" style="color:white;font-size:13px;">← Editar ajustes</a>
+</div>
+
+<!-- KPIs globales -->
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-label">Revenue Total GOFO</div>
+    <div class="kpi-value">${{ "{:,.2f}".format(grand_rev) }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Total Payroll</div>
+    <div class="kpi-value red">${{ "{:,.2f}".format(grand_pay) }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Profit Bruto</div>
+    <div class="kpi-value {{ 'green' if grand_profit >= 0 else 'red' }}">${{ "{:,.2f}".format(grand_profit) }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Margen</div>
+    <div class="kpi-value {{ 'green' if grand_margin >= 0 else 'red' }}">{{ grand_margin }}%</div>
+  </div>
+</div>
+
+{% set colors = {'ORD':'#7030A0','SDF':'#0070C0','MEM':'#FF9900','BTR':'#C00000','SHV':'#00B050'} %}
+{% for city_code, data in city_summaries.items() %}
+{% set cc = colors.get(city_code, '#4472C4') %}
+<div class="city-block">
+  <div class="city-header" style="background:{{ cc }}">
+    <h2>{{ city_code }} — {{ data.city_name }}</h2>
+    <div class="city-kpis">
+      <span>Revenue: ${{ "{:,.2f}".format(data.revenue) }}</span>
+      <span>Payroll: ${{ "{:,.2f}".format(data.payroll) }}</span>
+      <span>Profit: ${{ "{:,.2f}".format(data.profit) }}</span>
+      <span>Margen: {{ data.margin }}%</span>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th class="left">Driver</th>
+        <th>Rutas</th>
+        <th>Revenue</th>
+        <th>Pago Base</th>
+        <th>Bono Fijo</th>
+        <th>Bono Extra</th>
+        <th>Cobro Extra</th>
+        <th>Penaliz.</th>
+        <th>Total Pago</th>
+        <th>Profit</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for drv in data.drivers %}
+    <tr>
+      <td class="left">
+        {{ drv.driver }}
+        {% if drv.get('ajuste_nota') %}<span class="badge badge-adj">{{ drv.ajuste_nota }}</span>{% endif %}
+      </td>
+      <td style="text-align:center">{{ drv.rutas }}</td>
+      <td>${{ "{:,.2f}".format(drv.revenue) }}</td>
+      <td>${{ "{:,.2f}".format(drv.pago_base) }}</td>
+      <td {% if drv.bono_fijo > 0 %}class="yellow-cell"{% endif %}>${{ "{:,.2f}".format(drv.bono_fijo) }}</td>
+      <td {% if drv.get('ajuste_bono',0) > 0 %}class="yellow-cell adj-val"{% endif %}>
+        {% if drv.get('ajuste_bono',0) > 0 %}+${{ "{:,.2f}".format(drv.ajuste_bono) }}{% else %}—{% endif %}
+      </td>
+      <td {% if drv.get('ajuste_cobro',0) > 0 %}class="red-cell pen-val"{% endif %}>
+        {% if drv.get('ajuste_cobro',0) > 0 %}-${{ "{:,.2f}".format(drv.ajuste_cobro) }}{% else %}—{% endif %}
+      </td>
+      <td class="{% if drv.penalizaciones < 0 %}pen-val{% endif %}">
+        {% if drv.penalizaciones < 0 %}${{ "{:,.2f}".format(drv.penalizaciones) }}{% else %}—{% endif %}
+      </td>
+      <td class="green-cell">${{ "{:,.2f}".format(drv.pago_total) }}</td>
+      <td class="{{ 'green-cell' if drv.profit >= 0 else 'red-cell' }}">${{ "{:,.2f}".format(drv.profit) }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr style="background:#f0f4f8;font-weight:bold">
+        <td class="left" colspan="2">TOTALES {{ city_code }}</td>
+        <td>${{ "{:,.2f}".format(data.revenue) }}</td>
+        <td colspan="5"></td>
+        <td class="green-cell">${{ "{:,.2f}".format(data.payroll) }}</td>
+        <td class="{{ 'green-cell' if data.profit >= 0 else 'red-cell' }}">${{ "{:,.2f}".format(data.profit) }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% endfor %}
+
+<div class="footer">
+  <a href="/adjustments"><button class="btn btn-secondary">← Editar ajustes</button></a>
+  <a href="/generate"><button class="btn btn-primary">⬇️ Descargar Excel</button></a>
+</div>
+</body>
+</html>
